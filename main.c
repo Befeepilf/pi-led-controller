@@ -7,17 +7,17 @@
 #include <time.h>
 #include <unistd.h>
 
-#define BCM2708_PERI_ARM_BASE   0x20000000
-#define BCM2708_PERI_VC_BASE    0x7E000000
+#define BCM2708_PERI_PHYSICAL_BASE  0x20000000
+#define BCM2708_PERI_BUS_BASE       0x7E000000
 
 #define GPIO_BASE_OFFSET    0x200000
-#define GPIO_ARM_BASE       (BCM2708_PERI_ARM_BASE + GPIO_BASE_OFFSET)
-#define GPIO_VC_BASE        (BCM2708_PERI_VC_BASE + GPIO_BASE_OFFSET)
+#define GPIO_PHYSICAL_BASE  (BCM2708_PERI_PHYSICAL_BASE + GPIO_BASE_OFFSET)
+#define GPIO_BUS_BASE       (BCM2708_PERI_BUS_BASE + GPIO_BASE_OFFSET)
 #define GPIO_SET_OFFSET     0x1C
 #define GPIO_CLR_OFFSET     0x28
 
 #define DMA_BASE_OFFSET     0x007000
-#define DMA_ARM_BASE        (BCM2708_PERI_ARM_BASE + DMA_BASE_OFFSET)
+#define DMA_PHYSICAL_BASE   (BCM2708_PERI_PHYSICAL_BASE + DMA_BASE_OFFSET)
 #define DMA_CHANNEL         5
 #define DMA_CHANNEL_OFFSET  0x100
 
@@ -95,12 +95,12 @@ void mmapPeripherals()
         PROT_READ|PROT_WRITE,
         MAP_SHARED,
         mem_fd,
-        GPIO_ARM_BASE
+        GPIO_PHYSICAL_BASE
     );
 
     if (gpio_map == MAP_FAILED)
     {
-        printf("mmap error %d\n", (int) gpio_map);
+        printf("mmap error %d: %s\n", (int) gpio_map, strerror(errno));
         exit(-1);
     }
 
@@ -111,12 +111,12 @@ void mmapPeripherals()
         PROT_READ|PROT_WRITE,
         MAP_SHARED,
         mem_fd,
-        DMA_ARM_BASE
+        DMA_PHYSICAL_BASE
     );
 
     if (gpio_map == MAP_FAILED)
     {
-        printf("mmap error %d\n", (int) dma_map);
+        printf("mmap error %d: %s\n", (int) dma_map, strerror(errno));
         exit(-1);
     }
 
@@ -131,7 +131,7 @@ void setupDMA()
     struct ControlBlock {
         uint32_t transferInfo;
         uint32_t srcAddr;
-        // address in VC (not ARM)
+        // bus address (not physical)
         uint32_t destAddr;
 
         /*
@@ -157,7 +157,7 @@ void setupDMA()
         uint32_t 2dModeStride;
 
         // must be 256 bit aligned -> bottom 5 bits cannot be set
-        // address in VC (not ARM)
+        // bus address (not physical)
         uint32_t nextCBAddr;
         uint32_t padding[2]; // reserved; set to 0
     }
@@ -174,7 +174,7 @@ void setupDMA()
         uint32_t controlAndStatus;
 
         // must be 256 bit aligned -> bottom 5 bits cannot be set
-        // address in VC (not ARM)
+        // bus address (not physical)
         uint32_t CBAddr;
 
         /*
@@ -208,7 +208,7 @@ void setupDMA()
         uint32_t destAddr;
         uint32_t transferLen;
         uint32_t 2dModeStride;
-        // address in VC (not ARM)
+        // bus address (not physical)
         uint32_t nextCBAddr;
 
         uint32_t debug;
@@ -221,7 +221,7 @@ void setupDMA()
     }
 
 
-    struct DmaChannel* dmaChannel = DMA_ARM_BASE + DMA_CHANNEL * DMA_CHANNEL_OFFSET;
+    struct DmaChannel* dmaChannel = DMA_PHYSICAL_BASE + DMA_CHANNEL * DMA_CHANNEL_OFFSET;
     
     GPIOData* gpioData = malloc(sizeof(GPIOData));
     gpioData->set = (1 << PIN_RED);
@@ -229,15 +229,15 @@ void setupDMA()
 
     struct ControlBlock* cb = malloc(sizeof(struct ControlBlock));
     cb->transferInfo = DMA_CB_TI_DISABLE_WIDE_BURSTS | DMA_CB_TI_ENABLE_2DMODE;
-    cb->srcAddr = toVCAddr(gpioData);
-    cb->destAddr = GPIO_VC_BASE + GPIO_SET_OFFSET;
+    cb->srcAddr = toBUSAddr(gpioData);
+    cb->destAddr = GPIO_BUS_BASE + GPIO_SET_OFFSET;
     // transfer 4 bytes two times - set and clear respectively (see GPIOData)
     cb->transferLen = DMA_CB_TXFR_YLEN(2) | DMA_CB_TRXFR_XLEN(4);
     // write gpioData.set to GPIO_SET register, then increment destAddr in order to write gpioData.clr to GPIO_CLR register
     cb->2dModeStride = DMA_CB_STRIDE_DEST(GPIO_CLR_OFFSET - GPIO_SET_OFFSET) | DMA_CB_STRIDE_SRC(0);
-    cb->nextCBAddr = toVCAddr(cb);
+    cb->nextCBAddr = toBUSAddr(cb);
 
     dmaChannel->controlAndStatus |= DMA_CS_END;
-    dmaChannel->CBAddr = toVCAddr(cb);
+    dmaChannel->CBAddr = toBUSAddr(cb);
     dmaChannel->controlAndStatus |= DMA_CS_ACTIVE;
 }

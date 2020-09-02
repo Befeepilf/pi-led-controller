@@ -1,0 +1,9 @@
+//#define MB_IOCTL_REQ(size)    _IOWR(group, 0, datatype)
+
+#define MB_TAG_FIRMWARE_REV 0x00000001
+#define MB_TAG_BOARD_MODEL  0x00010001
+#define MB_TAG_BOARD_REV    0x00010002
+#define MB_TAG_BOARD_MAC    0x00010003
+#define MB_TAG_BOARD_SERIAL 0x00010004
+#define MB_TAG_ARM_MEM      0x00010005
+#define MB_TAG_VC_MEM       0x00010006
