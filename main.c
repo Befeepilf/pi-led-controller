@@ -12,17 +12,21 @@
 #include "vc-memory/vc-memory.h"
 
 
-#define PIN_RED 18
-#define PIN_GREEN 23
-#define PIN_BLUE 24
+#define PIN_RED     18
+#define PIN_GREEN   23
+#define PIN_BLUE    24
 
+#define NUM_FRAMES  256
+
+
+void startDMA();
+
+struct VCMemory frames[NUM_FRAMES];
 
 int main(int argc, char* argv)
 {
     uint32_t* gpio = mapGPIORegister();
     uint32_t* dma = mapDMARegister();
-
-    getDMAChannel(dma, 5);
 
     setPinMode(gpio, PIN_RED, GPIO_PIN_MODE_OUT);
     setPinMode(gpio, PIN_GREEN, GPIO_PIN_MODE_OUT);
@@ -32,99 +36,74 @@ int main(int argc, char* argv)
     setPinOutState(gpio, PIN_GREEN, GPIO_PIN_OUT_OFF);
     setPinOutState(gpio, PIN_BLUE, GPIO_PIN_OUT_OFF);
 
-    //startDMA();
-
-    // setPinOutState(gpio, PIN_RED, GPIO_PIN_OUT_OFF);
-    // setPinOutState(gpio, PIN_GREEN, GPIO_PIN_OUT_OFF);
-    // setPinOutState(gpio, PIN_BLUE, GPIO_PIN_OUT_OFF);
+    startDMA(dma);
 
     return 0;
 }
 
 
-// void startDMA()
-// {   
-//     struct GPIOData {
-//         uint32_t set[2];
-//         uint32_t clr[2];
-//     };
+void generateFrames(uint8_t brightness, struct VCMemory* state1, struct VCMemory* state2)
+{
+    unsigned int split = NUM_FRAMES - brightness;
 
-//     // set buffer
-//     struct VCMemory gpioSetMem = alloc_vc_uncached(sizeof(struct GPIOData), 1);
-//     struct GPIOData* gpioSet = (struct GPIOData*) gpioSetMem.virtual_addr;
-//     gpioSet->set[0] = (1 << PIN_RED);
-//     gpioSet->clr[0] = (1 << PIN_GREEN) | (1 << PIN_BLUE);
+    for (unsigned int i = 0; i < split; i++)
+    {
+        frames[NUM_FRAMES - i - 1] = alloc_vc_uncached(sizeof(struct DMAControlBlock), 32);
+        struct DMAControlBlock* cb = (struct DMAControlBlock*) frames[NUM_FRAMES - i - 1].virtual_addr;
+        cb->transferInfo = DMA_CB_TI_ENABLE_2DMODE | DMA_CB_TI_ENABLE_SRC_INC | DMA_CB_TI_ENABLE_DEST_INC;
+        cb->srcAddr = state2->bus_addr;
+        cb->destAddr = GPIO_BUS_BASE + GPIO_SET_OFFSET;
+        cb->transferLen = DMA_CB_TXFR_YLEN(2) | DMA_CB_TXFR_XLEN(8);
+        cb->TDModeStride = DMA_CB_STRIDE_DEST(GPIO_CLR_OFFSET - GPIO_SET_OFFSET - 8) | DMA_CB_STRIDE_SRC(0);
+        if (i > 0)
+            cb->nextCBAddr = frames[NUM_FRAMES - i].bus_addr;
+    }
 
-//     // clear buffer
-//     struct VCMemory gpioClrMem = alloc_vc_uncached(sizeof(struct GPIOData), 1);
-//     struct GPIOData* gpioClr = (struct GPIOData*) gpioClrMem.virtual_addr;
-//     gpioClr->set[0] = 0;
-//     gpioClr->clr[0] = (1 << PIN_RED) | (1 << PIN_GREEN) | (1 << PIN_BLUE);
+    for (unsigned int i = 0; i < brightness; i++)
+    {
+        frames[brightness - i - 1] = alloc_vc_uncached(sizeof(struct DMAControlBlock), 32);
+        struct DMAControlBlock* cb = (struct DMAControlBlock*) frames[brightness - i - 1].virtual_addr;
+        cb->transferInfo = DMA_CB_TI_ENABLE_2DMODE | DMA_CB_TI_ENABLE_SRC_INC | DMA_CB_TI_ENABLE_DEST_INC;
+        cb->srcAddr = state1->bus_addr;
+        cb->destAddr = GPIO_BUS_BASE + GPIO_SET_OFFSET;
+        cb->transferLen = DMA_CB_TXFR_YLEN(2) | DMA_CB_TXFR_XLEN(8);
+        cb->TDModeStride = DMA_CB_STRIDE_DEST(GPIO_CLR_OFFSET - GPIO_SET_OFFSET - 8) | DMA_CB_STRIDE_SRC(0);
+        cb->nextCBAddr = frames[brightness - i].bus_addr;
+    }
 
+    // loop back
+    ((struct DMAControlBlock*) frames[NUM_FRAMES - 1].virtual_addr)->nextCBAddr = frames[0].bus_addr;
+}
 
-//     unsigned int num_frames = 100;
-//     unsigned int brightness = 50;
-//     unsigned int split = num_frames - brightness;
-//     struct VCMemory frames[num_frames];
+void clearFrames()
+{
+    for (unsigned int i = 0; i < NUM_FRAMES; i++)
+    {
+        free_vc_uncached(&frames[i]);
+    }
+}
 
-//     for (unsigned int i = 0; i < split; i++)
-//     {
-//         frames[num_frames - i - 1] = alloc_vc_uncached(sizeof(struct ControlBlock), 32);
-//         struct ControlBlock* cb = (struct ControlBlock*) frames[num_frames - i - 1].virtual_addr;
-//         cb->transferInfo = DMA_CB_TI_ENABLE_2DMODE | DMA_CB_TI_ENABLE_SRC_INC | DMA_CB_TI_ENABLE_DEST_INC;
-//         cb->srcAddr = gpioClrMem.bus_addr;
-//         cb->destAddr = GPIO_BUS_BASE + GPIO_SET_OFFSET;
-//         cb->transferLen = DMA_CB_TXFR_YLEN(2) | DMA_CB_TXFR_XLEN(8);
-//         cb->TDModeStride = DMA_CB_STRIDE_DEST(GPIO_CLR_OFFSET - GPIO_SET_OFFSET - 8) | DMA_CB_STRIDE_SRC(0);
-//         if (i > 0)
-//             cb->nextCBAddr = frames[num_frames - i].bus_addr;
-//     }
+void startDMA(uint32_t* dma)
+{
+    struct DMAChannelHeader* dmaChannel = getDMAChannel(dma, 5);
 
-//     for (unsigned int i = 0; i < num_frames - split; i++)
-//     {
-//         frames[num_frames - split - i - 1] = alloc_vc_uncached(sizeof(struct ControlBlock), 32);
-//         struct ControlBlock* cb = (struct ControlBlock*) frames[num_frames - split - i - 1].virtual_addr;
-//         cb->transferInfo = DMA_CB_TI_ENABLE_2DMODE | DMA_CB_TI_ENABLE_SRC_INC | DMA_CB_TI_ENABLE_DEST_INC;
-//         cb->srcAddr = gpioSetMem.bus_addr;
-//         cb->destAddr = GPIO_BUS_BASE + GPIO_SET_OFFSET;
-//         cb->transferLen = DMA_CB_TXFR_YLEN(2) | DMA_CB_TXFR_XLEN(8);
-//         cb->TDModeStride = DMA_CB_STRIDE_DEST(GPIO_CLR_OFFSET - GPIO_SET_OFFSET - 8) | DMA_CB_STRIDE_SRC(0);
-//         cb->nextCBAddr = frames[num_frames - split - i].bus_addr;
-//     }
+    struct VCMemory gpioSetMem = createUncachedGPIOData(1 << PIN_RED, 0, (1 << PIN_GREEN) | (1 << PIN_BLUE), 0);
+    struct VCMemory gpioClrMem = createUncachedGPIOData(0, 0, (1 << PIN_RED) | (1 << PIN_GREEN) | (1 << PIN_BLUE), 0);
 
-//     // loop back
-//     ((struct ControlBlock*) frames[num_frames - 1].virtual_addr)->nextCBAddr = frames[0].bus_addr;
+    generateFrames(1, &gpioSetMem, &gpioClrMem);
 
+    startDMAChannel(dmaChannel, frames[0].bus_addr);
 
-//     // struct VCMemory cbMem = alloc_vc_uncached(sizeof(struct ControlBlock), 32);
-//     // struct ControlBlock* cb = (struct ControlBlock*) cbMem.virtual_addr;
-//     // cb->transferInfo = DMA_CB_TI_ENABLE_2DMODE | DMA_CB_TI_ENABLE_SRC_INC | DMA_CB_TI_ENABLE_DEST_INC;
-//     // cb->srcAddr = gpioDataMem.bus_addr;
-//     // cb->destAddr = GPIO_BUS_BASE + GPIO_SET_OFFSET;
-//     // // transfer 8 bytes two times - two set registers and two clear registers respectively (see GPIOData)
-//     // cb->transferLen = DMA_CB_TXFR_YLEN(2) | DMA_CB_TXFR_XLEN(8);
-//     // // write gpioData.set to GPIO_SET registers, then increment destAddr in order to write gpioData.clr to GPIO_CLR registers
-//     // cb->TDModeStride = DMA_CB_STRIDE_DEST(GPIO_CLR_OFFSET - GPIO_SET_OFFSET - 8) | DMA_CB_STRIDE_SRC(0);
-//     // cb->nextCBAddr = cbMem.bus_addr;
+    // sleep
+    for (unsigned int i = 0; i < 10; i++)
+    {
+        printf("%u\n", i);
+        sleep(1);
+    }
 
-//     struct DmaChannelHeader* dmaChannel = (struct DmaChannelHeader*) (dma + (DMA_CHANNEL * DMA_CHANNEL_OFFSET) / 4);
-//     dmaChannel->controlAndStatus |= DMA_CS_END;
-//     dmaChannel->CBAddr = frames[0].bus_addr;
-//     dmaChannel->controlAndStatus |= DMA_CS_ACTIVE;
+    stopDMAChannel(dmaChannel);
 
-//     for (unsigned int i = 0; i < 20; i++)
-//     {
-//         printf("%u\n", i);
-//         sleep(1);
-//     }
-
-//     dmaChannel->controlAndStatus |= DMA_CS_ABORT;
-//     dmaChannel->controlAndStatus |= DMA_CS_RESET;
-
-//     free_vc_uncached(&gpioSetMem);
-//     free_vc_uncached(&gpioClrMem);
-//     for (unsigned int i = 0; i < num_frames; i++)
-//     {
-//         free_vc_uncached(&frames[i]);
-//     }
-// }
+    clearFrames();
+    free_vc_uncached(&gpioSetMem);
+    free_vc_uncached(&gpioClrMem);
+}

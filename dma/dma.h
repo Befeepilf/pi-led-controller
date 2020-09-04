@@ -2,6 +2,12 @@
 #define DMA_H
 
 #include <stdint.h>
+#include "../peri.h"
+
+#define DMA_BASE_OFFSET     0x007000
+#define DMA_PHYSICAL_BASE   (BCM2708_PERI_PHYSICAL_BASE + DMA_BASE_OFFSET)
+#define DMA_REGISTER_SIZE   0xff4
+#define DMA_CHANNEL_OFFSET  0x100
 
 #define DMA_CB_TI_DISABLE_WIDE_BURSTS   (1 << 26)
 #define DMA_CB_TI_ENABLE_SRC_INC        (1 << 8)
@@ -61,5 +67,7 @@ struct DMAChannelHeader {
 
 uint32_t* mapDMARegister();
 struct DMAChannelHeader* getDMAChannel(uint32_t* dma, uint8_t channel);
+void startDMAChannel(struct DMAChannelHeader* channel, uint32_t firstFrameBusAddr);
+void stopDMAChannel(struct DMAChannelHeader* channel);
 
 #endif

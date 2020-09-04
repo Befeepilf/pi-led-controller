@@ -4,14 +4,9 @@
 #include <stdlib.h> // for exit(), NULL
 
 #include "dma.h"
-#include "../peri.h"
-#include "../mailbox/mailbox.h" // for get_dma_channels()
+#include "../mailbox/mailbox.h" // for get_usable_dma_channels()
 #include "../util/util.h" // for map_mem
 
-#define DMA_BASE_OFFSET     0x007000
-#define DMA_PHYSICAL_BASE   (BCM2708_PERI_PHYSICAL_BASE + DMA_BASE_OFFSET)
-#define DMA_REGISTER_SIZE   0xff4
-#define DMA_CHANNEL_OFFSET  0x100
 #define DMA_MIN_CHANNEL     0
 #define DMA_MAX_CHANNEL     15
 
@@ -35,6 +30,18 @@ struct DMAChannelHeader* getDMAChannel(uint32_t* dma, uint8_t channel)
     return (struct DMAChannelHeader*) (dma + (channel * DMA_CHANNEL_OFFSET) / 4);
 }
 
+void startDMAChannel(struct DMAChannelHeader* channel, uint32_t firstFrameBusAddr)
+{
+    channel->controlAndStatus |= DMA_CS_END;
+    channel->CBAddr = firstFrameBusAddr;
+    channel->controlAndStatus |= DMA_CS_ACTIVE;
+}
+
+void stopDMAChannel(struct DMAChannelHeader* channel)
+{
+    channel->controlAndStatus |= DMA_CS_ABORT;
+    channel->controlAndStatus |= DMA_CS_RESET;
+}
 
 
 /* Internal util functions */
@@ -47,7 +54,7 @@ void checkDMAChannel(uint8_t channel)
         exit(-1);
     }
 
-    uint16_t channels = get_dma_channels();
+    uint16_t channels = get_usable_dma_channels();
     if (~channels & (1 << channel))
     {
         fprintf(stderr, "DMA error: VC says channel %u is not usable.\n", channel);
