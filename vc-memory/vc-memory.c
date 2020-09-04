@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "mailbox/mailbox.h"
-#include "mailbox/util.h"
-#include "util.h"
+#include "../mailbox/mailbox.h"
+#include "../mailbox/util.h"
+#include "../util/util.h"
 #include "vc-memory.h"
 
 #define UNCACHED_BUS_TO_PHYSICAL(bus) ((bus) & ~0xc0000000)
