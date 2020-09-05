@@ -1,3 +1,3 @@
 [submodule "mailbox"]
-	path = mailbox
+	path = src/mailbox
 	url = https://github.com/Befeepilf/pi-mailbox-property-api
