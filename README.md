@@ -15,7 +15,7 @@ Currently, the library assumes the following mapping between GPIO pins and RGB c
 You can change the mapping by altering the `PIN_RED`, `PIN_GREEN` & `PIN_BLUE` macros inside `led/led.c`.
 
 ### DMA channel
-The library also assumes that the 5th DMA channel is usable and enabled. To change the DMA channel alter the `DMA_CHANNEL` macro inside `led/led.c`.
+The library also assumes that the DMA channel 5 is usable and enabled. To change the DMA channel alter the `DMA_CHANNEL` macro inside `led/led.c`.
 
 ### API
 All high-level functions are declared in led/led.h, which are:
