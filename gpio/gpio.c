@@ -21,6 +21,11 @@ uint32_t* mapGPIORegister()
     return (uint32_t*) map_mem(GPIO_PHYSICAL_BASE, GPIO_REGISTER_SIZE);
 }
 
+void unmapGPIORegister(uint32_t* gpio)
+{
+    unmap_mem(gpio, GPIO_REGISTER_SIZE);
+}
+
 void setPinMode(uint32_t* gpio, uint8_t pin, uint8_t mode)
 {
     assert(gpio != NULL);
@@ -58,11 +63,6 @@ void setPinOutState(uint32_t* gpio, uint8_t pin, uint8_t state)
 
 struct VCMemory createUncachedGPIOData(uint32_t set1, uint32_t set2, uint32_t clr1, uint32_t clr2)
 {
-    struct GPIOData {
-        uint32_t set[2];
-        uint32_t clr[2];
-    };
-
     struct VCMemory gpioDataMem = alloc_vc_uncached(sizeof(struct GPIOData), 1);
     struct GPIOData* gpioData = (struct GPIOData*) gpioDataMem.virtual_addr;
 

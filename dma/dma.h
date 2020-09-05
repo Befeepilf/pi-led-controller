@@ -66,6 +66,7 @@ struct DMAChannelHeader {
 
 
 uint32_t* mapDMARegister();
+void unmapDMARegister(uint32_t* dma);
 struct DMAChannelHeader* getDMAChannel(uint32_t* dma, uint8_t channel);
 void startDMAChannel(struct DMAChannelHeader* channel, uint32_t firstFrameBusAddr);
 void stopDMAChannel(struct DMAChannelHeader* channel);

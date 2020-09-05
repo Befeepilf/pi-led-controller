@@ -19,7 +19,13 @@
 #define GPIO_PIN_OUT_ON     1
 #define GPIO_PIN_OUT_OFF    0
 
+struct GPIOData {
+    uint32_t set[2];
+    uint32_t clr[2];
+};
+
 uint32_t* mapGPIORegister();
+void unmapGPIORegister(uint32_t* gpio);
 void setPinMode(uint32_t* gpio, uint8_t pin, uint8_t mode);
 void setPinOutState(uint32_t* gpio, uint8_t pin, uint8_t state);
 struct VCMemory createUncachedGPIOData(uint32_t set1, uint32_t set2, uint32_t clr1, uint32_t clr2);

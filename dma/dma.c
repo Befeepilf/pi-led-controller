@@ -22,6 +22,11 @@ uint32_t* mapDMARegister()
     return (uint32_t*) map_mem(DMA_PHYSICAL_BASE, DMA_REGISTER_SIZE);
 }
 
+void unmapDMARegister(uint32_t* dma)
+{
+    unmap_mem(dma, DMA_REGISTER_SIZE);
+}
+
 struct DMAChannelHeader* getDMAChannel(uint32_t* dma, uint8_t channel)
 {
     assert(dma != NULL);
