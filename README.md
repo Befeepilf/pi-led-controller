@@ -5,12 +5,13 @@ This library is meant for controlling an RGB LED by switching the red, green and
 ## Usage
 
 ### GPIO pins
-Currently, the library assumes the following mapping between GPIO pins and RGB channel:
+Currently, the library assumes the following mapping between GPIO pins and RGB channels:
 | GPIO pin | Corresponding RGB channel |
 | -------- | ------------------------- |
 | 18       | Red                       |
 | 23       | Green                     |
 | 24       | Blue                      |
+
 You can change the mapping by altering the `PIN_RED`, `PIN_GREEN` & `PIN_BLUE` macros inside `led/led.c`.
 
 ### DMA channel
@@ -25,6 +26,7 @@ All high-level functions are declared in led/led.h, which are:
 | `stopLED()`       | Unmaps DMA & GPIO and frees allocated memory. Must be called before program exits.  |
 | `setRGB(uint8_t red, uint8_t green, uint8_t blue)` | Sets the current color. |
 
+### Example
 Here is a simple example to get you started:
 ```c
 #include <unistd.h> // for sleep()
