@@ -5,14 +5,14 @@ int main(int argc, char* argv)
 {
     startLED();
 
-    for (unsigned int i = 0; i < 10; i++)
+    for (unsigned int i = 0; i < 100; i++)
     {
         setRGB(255, 0 , 0);
-        sleep(1);
+        usleep(50000);
         setRGB(0, 255 , 0);
-        sleep(1);
+        usleep(50000);
         setRGB(0, 0 , 255);
-        sleep(1);
+        usleep(50000);
     }
 
     stopLED();

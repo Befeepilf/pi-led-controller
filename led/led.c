@@ -7,9 +7,12 @@
 #include "../util/util.h"
 #include "../vc-memory/vc-memory.h"
 
+#define DMA_CHANNEL 5
+
 #define PIN_RED     18
 #define PIN_GREEN   23
 #define PIN_BLUE    24
+
 #define NUM_FRAMES 256
 
 
@@ -70,7 +73,7 @@ void startLED()
     setPinMode(gpio, PIN_GREEN, GPIO_PIN_MODE_OUT);
     setPinMode(gpio, PIN_BLUE, GPIO_PIN_MODE_OUT);
 
-    dmaChannel = getDMAChannel(dma, 5);
+    dmaChannel = getDMAChannel(dma, DMA_CHANNEL);
     initFrames();
     startDMAChannel(dmaChannel, frames[0].dmaCB.bus_addr);
 }
