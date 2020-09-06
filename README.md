@@ -52,5 +52,7 @@ int main(int argc, char* argv)
 }
 ```
 
+For more examples take a look at the `examples` folder.
+
 ### Compiling
 This is *not* a header-only library. You have to compile and link all the source files inside the `src` directory.

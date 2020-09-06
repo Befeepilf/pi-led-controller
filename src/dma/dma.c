@@ -37,7 +37,7 @@ struct DMAChannelHeader* getDMAChannel(uint32_t* dma, uint8_t channel)
 
 void startDMAChannel(struct DMAChannelHeader* channel, uint32_t firstFrameBusAddr)
 {
-    channel->controlAndStatus |= DMA_CS_END;
+    stopDMAChannel(channel);
     channel->CBAddr = firstFrameBusAddr;
     channel->controlAndStatus |= DMA_CS_ACTIVE;
 }
